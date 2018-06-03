@@ -1,0 +1,218 @@
+console.log("I am listening");
+$(document).ready(function(){
+  var rows = 8;
+  var columns = 8;
+  var tableContent = [];
+  for(var x = 0; x < rows; x++) {
+    var rowElement = '<tr class="row" id="r'+ x +'">';
+    tableContent.push(rowElement);
+    for (var y=0; y < columns; y++){
+      var columnElement = '<td class="cell" id="r' + x +'_c'+ y +'"></td>';
+      tableContent.push(columnElement);
+    }
+    var rowElementClose = '</tr>';
+    tableContent.push(rowElementClose);
+  }
+
+  $(".board").html(tableContent);
+
+(function (window) {
+    var PLAYER_WHITE= 1,
+        PLAYER_BLACK = -1,
+        PLAYER_NONE = 0,
+        MAX_ROWS = 8,
+        MAX_COLS = 8,
+        BLACK_MARKERS = 30,
+        WHITE_MARKERS = 30
+        ;
+
+    var Util = {
+        cellIdForRowAndCol: function (r, c) {
+            return "r" + r + "_c" + c;
+        },
+        rowAndColForCellId: function (cellId) {
+            var coords = cellId.split('_');
+            coords[0] = parseInt(coords[0].substr(1, coords[0].length));
+            coords[1] = parseInt(coords[1].substr(1, coords[1].length));
+            return coords;
+        },
+        cellContentsForPlayer: function (player) {
+            if (player === PLAYER_WHITE) {
+                return '<div class="piece white"></div>';
+            } else if (player === PLAYER_BLACK) {
+                return '<div class="piece black"></div>';
+            }
+            return '';
+        }
+    }
+
+    var Game = {
+        init: function () {
+            var t_row, r, c, cellInitialized;
+            this.board = [];
+
+
+            //setup initial board state
+            //    - all empty, except middle 4 sqares which are alternating colors
+            //        ( i.e. [3,3] = red, [3,4] = black, [4,3] = red, [4,4] = black )
+            for (r = 0; r < MAX_ROWS; r += 1) {
+                t_row = []
+                for (c = 0; c < MAX_COLS; c += 1) {
+                    cellInitialized = false;
+                    if (r === 3) {
+                        if (c === 3) {
+                            t_row.push(PLAYER_WHITE);
+                            cellInitialized = true;
+                        } else if (c === 4) {
+                            t_row.push(PLAYER_BLACK);
+                            cellInitialized = true;
+                        }
+                    } else if (r === 4) {
+                        if (c === 3) {
+                            t_row.push(PLAYER_BLACK);
+                            cellInitialized = true;
+                        } else if (c === 4) {
+                            t_row.push(PLAYER_WHITE);
+                            cellInitialized = true;
+                        }
+                    }
+                    if (!cellInitialized) {
+                        t_row.push(PLAYER_NONE);
+                    }
+                }
+                this.board.push(t_row);
+            }
+
+            //setup click handlers
+            $('.cell').on('click', this.cellClicked.bind(this));
+
+            //red goes first
+            this.currentPlayer = PLAYER_WHITE;
+
+            return this;
+        },
+        drawBoard: function () {
+            var t_row, t_col, r, c, cellId,
+            currPlayer = this.currentPlayer === PLAYER_WHITE ? 'white' : 'black';
+
+            //draw all pieces on the board
+            for (r = 0; r < MAX_ROWS; r += 1) {
+                t_row = this.board[r];
+                for (c = 0; c < MAX_COLS; c += 1) {
+                    cellId = '#' + Util.cellIdForRowAndCol(r, c);
+                    $(cellId).empty()
+                        .html(Util.cellContentsForPlayer(this.board[r][c]));
+                }
+            }
+
+            //show current player
+            $('#currentPlayer')
+                .removeClass('black').removeClass('white')
+                .addClass(currPlayer)
+                .text(currPlayer.toUpperCase());
+
+            // get current default score
+            this.letsDoACount();
+            this.addMarkers();
+            return this;
+        },
+        cellClicked: function (e) {
+            var cellId = e.currentTarget.id,
+                coords = Util.rowAndColForCellId(cellId);
+
+            this.doTurn(coords[0], coords[1]);
+        },
+
+/******************** TODO: Fix Me! ********************/
+
+        doTurn: function (row, column) {
+            //Implement the correct rules
+            this.board[row][column] = this.currentPlayer;
+            this.takeOver(row,column);
+            if(this.currentPlayer == 1){
+              WHITE_MARKERS += -1;
+            } else {
+              BLACK_MARKERS += -1;
+            }
+            this.currentPlayer *= -1;
+            this.drawBoard();
+            this.letsDoACount();
+        },
+
+        takeOver: function(newMoveX, newMoveY){
+          var up = this.board[newMoveX - 1][newMoveY];
+          var down = this.board[newMoveX + 1][newMoveY];
+          var right = this.board[newMoveX][newMoveY + 1];
+          var left = this.board[newMoveX][newMoveY - 1];
+          if(up !== this.currentPlayer && up !== 0 && up !== undefined){
+            if(this.board[newMoveX - 2][newMoveY] == this.currentPlayer){
+              this.board[newMoveX - 1][newMoveY] = this.currentPlayer;
+            } else if(this.board[newMoveX - 3][newMoveY] == this.currentPlayer) {
+              this.board[newMoveX - 1][newMoveY] = this.currentPlayer;
+              this.board[newMoveX - 2][newMoveY] = this.currentPlayer;
+            } ;
+          }
+
+          // finding a friend marker after matching a foe marker next to it and then take over
+          if(down !== this.currentPlayer && down !== 0 && down !== undefined){
+            if(this.board[newMoveX + 2][newMoveY] == this.currentPlayer){
+              this.board[newMoveX + 1][newMoveY] = this.currentPlayer;
+            } ;
+          }
+
+          if(right !== this.currentPlayer && right !== 0 && right !== undefined){
+            if(this.board[newMoveX][newMoveY + 2] == this.currentPlayer){
+              this.board[newMoveX][newMoveY + 1] = this.currentPlayer;
+            } ;
+          }
+
+          if(left !== this.currentPlayer && left !== 0 && left !== undefined){
+            if(this.board[newMoveX][newMoveY - 2] == this.currentPlayer){
+              this.board[newMoveX][newMoveY - 1] = this.currentPlayer;
+            } ;
+          }
+        },
+
+        // Updating score after every turn
+        letsDoACount: function(){
+          var blackMarkers = $(".piece.black");
+          var whiteMarkers = $(".piece.white");
+          $(".blackScore").html(blackMarkers.length);
+          $(".whiteScore").html(whiteMarkers.length);
+
+
+        },
+
+        addMarkers: function(markers){
+          var whiteholder = $(".white-marker-holder")
+          var blackholder = $(".black-marker-holder")
+          var markerContent= []
+
+          for(var x = 0; x < WHITE_MARKERS; x++){
+           var newMarker = "<div class='marker'></div>"
+           markerContent.push(newMarker);
+          }
+
+          whiteholder.html(markerContent);
+
+          var markerContent= [];
+
+          for(var x = 0; x < BLACK_MARKERS; x++){
+           var newMarker = "<div class='marker'></div>"
+           markerContent.push(newMarker);
+         };
+
+          blackholder.html(markerContent);
+        }
+
+/*******************************************************/
+
+
+    }
+
+    window.Othello = Game;
+})(window)
+
+Othello.init().drawBoard();
+
+});
